@@ -1,0 +1,459 @@
+{
+    "components": {
+      "schemas": {
+        "Voucher": {
+          "type": "object",
+          "required": ["code", "customerId", "specialOfferId", "expirationDate"],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "Voucher ID"
+            },
+            "code": {
+              "type": "string",
+              "description": "Unique voucher code"
+            },
+            "customerId": {
+              "type": "integer",
+              "description": "Customer ID"
+            },
+            "specialOfferId": {
+              "type": "integer",
+              "description": "Special Offer ID"
+            },
+            "expirationDate": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Expiration date"
+            },
+            "usedAt": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true,
+              "description": "Date when voucher was used"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Creation date"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last update date"
+            }
+          }
+        },
+        "VoucherWithDetails": {
+          "allOf": [
+            { "$ref": "#/components/schemas/Voucher" },
+            {
+              "type": "object",
+              "properties": {
+                "customer": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  }
+                },
+                "specialOffer": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "discountPercentage": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "CreateVoucherDto": {
+          "type": "object",
+          "required": ["customerId", "specialOfferId", "expirationDate"],
+          "properties": {
+            "customerId": {
+              "type": "integer",
+              "description": "Customer ID"
+            },
+            "specialOfferId": {
+              "type": "integer",
+              "description": "Special Offer ID"
+            },
+            "expirationDate": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Expiration date"
+            },
+            "code": {
+              "type": "string",
+              "description": "Optional. If not provided, a code will be auto-generated"
+            }
+          }
+        },
+        "GenerateVouchersDto": {
+          "type": "object",
+          "required": ["specialOfferId", "expirationDate", "customerIds"],
+          "properties": {
+            "specialOfferId": {
+              "type": "integer",
+              "description": "Special Offer ID"
+            },
+            "expirationDate": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Expiration date"
+            },
+            "customerIds": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              },
+              "description": "List of Customer IDs"
+            }
+          }
+        },
+        "RedeemVoucherDto": {
+          "type": "object",
+          "required": ["code", "email"],
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "Voucher code"
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Customer email"
+            }
+          }
+        },
+        "RedeemVoucherResponse": {
+          "type": "object",
+          "properties": {
+            "isValid": {
+              "type": "boolean",
+              "description": "Whether the voucher is valid"
+            },
+            "discountPercentage": {
+              "type": "number",
+              "description": "Discount percentage if valid"
+            },
+            "offerName": {
+              "type": "string",
+              "description": "Special offer name if valid"
+            },
+            "message": {
+              "type": "string",
+              "description": "Error message if invalid"
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "/vouchers": {
+        "get": {
+          "summary": "Get all vouchers",
+          "tags": ["Vouchers"],
+          "responses": {
+            "200": {
+              "description": "List of all vouchers",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Voucher"
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "post": {
+          "summary": "Create a new voucher",
+          "tags": ["Vouchers"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateVoucherDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Voucher created successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Voucher"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid input",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Customer or special offer not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/vouchers/{id}": {
+        "get": {
+          "summary": "Get a voucher by ID",
+          "tags": ["Vouchers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Voucher ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Voucher details",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Voucher"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Voucher not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/vouchers/code/{code}": {
+        "get": {
+          "summary": "Get a voucher by code",
+          "tags": ["Vouchers"],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "code",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Voucher code"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Voucher details",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/VoucherWithDetails"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Voucher not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/vouchers/generate": {
+        "post": {
+          "summary": "Generate vouchers for multiple customers",
+          "tags": ["Vouchers"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateVouchersDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Vouchers generated successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Voucher"
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid input",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "One or more customers or special offer not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/vouchers/redeem": {
+        "post": {
+          "summary": "Redeem a voucher",
+          "tags": ["Vouchers"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemVoucherDto"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Voucher redemption result",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RedeemVoucherResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid input",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
